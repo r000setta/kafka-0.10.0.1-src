@@ -39,10 +39,10 @@ import java.util.List;
  */
 public class RequestFuture<T> {
 
-    private boolean isDone = false;
-    private T value;
-    private RuntimeException exception;
-    private List<RequestFutureListener<T>> listeners = new ArrayList<>();
+    private boolean isDone = false; //表示当前请求是否已经完成，注意只要是被处理过就设置为true,不管有无异常
+    private T value;    //请求正常完成时收到的相应
+    private RuntimeException exception; //请求异常时得到的相应
+    private List<RequestFutureListener<T>> listeners = new ArrayList<>();   //监听请求完成的情况，含有onSuccess和onFailure
 
 
     /**
@@ -158,9 +158,10 @@ public class RequestFuture<T> {
      * @param adapter The adapter which does the conversion
      * @param <S> The type of the future adapted to
      * @return The new future
+     * 典型的适配器模式应用，将<T>适配成<S>
      */
     public <S> RequestFuture<S> compose(final RequestFutureAdapter<T, S> adapter) {
-        final RequestFuture<S> adapted = new RequestFuture<S>();
+        final RequestFuture<S> adapted = new RequestFuture<>();
         addListener(new RequestFutureListener<T>() {
             @Override
             public void onSuccess(T value) {
@@ -175,10 +176,15 @@ public class RequestFuture<T> {
         return adapted;
     }
 
+    /**
+     * 责任链的应用，通过RequestFutureListener在多个RequestFuture之间传递事件
+     * @param future
+     */
     public void chain(final RequestFuture<T> future) {
-        addListener(new RequestFutureListener<T>() {
+        addListener(new RequestFutureListener<T>() {    //添加监听器
             @Override
             public void onSuccess(T value) {
+                //通过监听器将value传递给下一个RequestFuture对象
                 future.complete(value);
             }
 

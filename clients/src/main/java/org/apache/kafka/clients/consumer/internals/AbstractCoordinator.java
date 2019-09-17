@@ -82,8 +82,8 @@ public abstract class AbstractCoordinator implements Closeable {
 
     private static final Logger log = LoggerFactory.getLogger(AbstractCoordinator.class);
 
-    private final Heartbeat heartbeat;
-    private final HeartbeatTask heartbeatTask;
+    private final Heartbeat heartbeat;  //心跳任务的辅助类
+    private final HeartbeatTask heartbeatTask;  //定时任务，负责心跳的发送和相应
     private final int sessionTimeoutMs;
     private final GroupCoordinatorMetrics sensors;
     protected final String groupId;

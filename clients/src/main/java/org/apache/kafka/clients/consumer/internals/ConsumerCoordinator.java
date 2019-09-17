@@ -57,7 +57,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * This class manages the coordination process with the consumer coordinator.
+ * This class manages the coordination process with the consumer coordinator
+ * Kafka使用ConsumerCoordinator組件GroupCoordinator交互
  */
 public final class ConsumerCoordinator extends AbstractCoordinator {
 

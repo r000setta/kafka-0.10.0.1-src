@@ -18,6 +18,7 @@ import java.util.PriorityQueue;
 
 /**
  * Tracks a set of tasks to be executed after a delay.
+ * Kafka提供的定时任务队列，底层使用PriorityQueue
  */
 public class DelayedTaskQueue {
 

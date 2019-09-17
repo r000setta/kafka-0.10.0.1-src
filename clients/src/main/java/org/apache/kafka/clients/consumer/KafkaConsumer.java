@@ -501,21 +501,21 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaConsumer.class);
     private static final long NO_CURRENT_THREAD = -1L;
-    private static final AtomicInteger CONSUMER_CLIENT_ID_SEQUENCE = new AtomicInteger(1);
+    private static final AtomicInteger CONSUMER_CLIENT_ID_SEQUENCE = new AtomicInteger(1);  //ClientID生成器
     private static final String JMX_PREFIX = "kafka.consumer";
 
     private final String clientId;
-    private final ConsumerCoordinator coordinator;
+    private final ConsumerCoordinator coordinator;  //控制Consumer和服务端GroupCoordinator之间的通信
     private final Deserializer<K> keyDeserializer;
     private final Deserializer<V> valueDeserializer;
-    private final Fetcher<K, V> fetcher;
-    private final ConsumerInterceptors<K, V> interceptors;
+    private final Fetcher<K, V> fetcher;    //从服务端获取信息
+    private final ConsumerInterceptors<K, V> interceptors;  //拦截器集合，可以在消息通过poll返回给用户，或者提交offset前进行拦截
 
     private final Time time;
-    private final ConsumerNetworkClient client;
+    private final ConsumerNetworkClient client; //负责消费者和Kafka服务端的网络
     private final Metrics metrics;
-    private final SubscriptionState subscriptions;
-    private final Metadata metadata;
+    private final SubscriptionState subscriptions;  //记录消费者的消费状态
+    private final Metadata metadata;    //维护Kafka集群元信息
     private final long retryBackoffMs;
     private final long requestTimeoutMs;
     private boolean closed = false;

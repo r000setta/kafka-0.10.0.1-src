@@ -44,29 +44,39 @@ import java.util.regex.Pattern;
  * This class also maintains a cache of the latest commit position for each of the assigned
  * partitions. This is updated through {@link #committed(TopicPartition, OffsetAndMetadata)} and can be used
  * to set the initial fetch position (e.g. {@link Fetcher#resetOffset(TopicPartition)}.
+ *
+ * KafkaConsumer通過FetchRequest拉取消息，並使用SubscriptionState來追踪TopicPartition和offset的关系
  */
 public class SubscriptionState {
 
+    //内部枚举类型，表示订阅Topic的模式
     private enum SubscriptionType {
-        NONE, AUTO_TOPICS, AUTO_PATTERN, USER_ASSIGNED
-    };
+        NONE,   //初始值
+        AUTO_TOPICS,    //按照名字订阅，自动分配分区
+        AUTO_PATTERN,   //按照正则订阅，自动分区
+        USER_ASSIGNED   //收订指定Topic以及分区编号
+    }
 
     /* the type of subscription */
     private SubscriptionType subscriptionType;
 
     /* the pattern user has requested */
+    //使用AUTO_PATTERN时，按照此正则字段进行匹配
     private Pattern subscribedPattern;
 
     /* the list of topics the user has requested */
+    //记录所有订阅的Topic,通过changeSubscription添加
     private final Set<String> subscription;
 
     /* the list of topics the group has subscribed to (set only for the leader on join group completion) */
     private final Set<String> groupSubscription;
 
     /* the list of partitions the user has requested */
+    //如果使用USER_ASSIGNED,则记录分配给当前消费者的TopicPartition集合
     private final Set<TopicPartition> userAssignment;
 
     /* the list of partitions currently assigned */
+    //记录每个TopicPartition的消费状态
     private final Map<TopicPartition, TopicPartitionState> assignment;
 
     /* do we need to request a partition assignment from the coordinator? */
@@ -91,9 +101,10 @@ public class SubscriptionState {
      * @param type The given subscription type
      */
     private void setSubscriptionType(SubscriptionType type) {
+        //如果是None，可以指定其他模式
         if (this.subscriptionType == SubscriptionType.NONE)
             this.subscriptionType = type;
-        else if (this.subscriptionType != type)
+        else if (this.subscriptionType != type)     //否则会报错
             throw new IllegalStateException(SUBSCRIPTION_EXCEPTION_MESSAGE);
     }
 
@@ -378,6 +389,7 @@ public class SubscriptionState {
         return listener;
     }
 
+    //表示TopicPartition消费状态
     private static class TopicPartitionState {
         private Long position; // last consumed position
         private OffsetAndMetadata committed;  // last committed position
