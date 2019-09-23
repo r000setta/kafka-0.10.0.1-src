@@ -27,9 +27,11 @@ import kafka.common.TopicAndPartition
 import com.yammer.metrics.core.Gauge
 import org.apache.kafka.common.utils.Utils
 
+//抽象线程管理器，实现类有消费者和备份副本
 abstract class AbstractFetcherManager(protected val name: String, clientId: String, numFetchers: Int = 1)
   extends Logging with KafkaMetricsGroup {
   // map of (source broker_id, fetcher_id per source broker) => fetcher
+  //根据BrokerAndFetcherId管理,分组所有的拉取线程
   private val fetcherThreadMap = new mutable.HashMap[BrokerAndFetcherId, AbstractFetcherThread]
   private val mapLock = new Object
   this.logIdent = "[" + name + "] "
@@ -69,10 +71,13 @@ abstract class AbstractFetcherManager(protected val name: String, clientId: Stri
   }
 
   // to be defined in subclass to create a specific fetcher
+  //抽象方法，创建拉取线程，sourceBroker指定目标节点
   def createFetcherThread(fetcherId: Int, sourceBroker: BrokerEndPoint): AbstractFetcherThread
 
+  //为分区添加拉取线程并启动,参数(分区的主副节点，分区的拉取位置)
   def addFetcherForPartitions(partitionAndOffsets: Map[TopicAndPartition, BrokerAndInitialOffset]) {
     mapLock synchronized {
+      //将消费者分配的所有分区根据主副本和fetchId进行分组
       val partitionsPerFetcher = partitionAndOffsets.groupBy{ case(topicAndPartition, brokerAndInitialOffset) =>
         BrokerAndFetcherId(brokerAndInitialOffset.broker, getFetcherId(topicAndPartition.topic, topicAndPartition.partition))}
       for ((brokerAndFetcherId, partitionAndOffsets) <- partitionsPerFetcher) {
@@ -82,9 +87,10 @@ abstract class AbstractFetcherManager(protected val name: String, clientId: Stri
           case None =>
             fetcherThread = createFetcherThread(brokerAndFetcherId.fetcherId, brokerAndFetcherId.broker)
             fetcherThreadMap.put(brokerAndFetcherId, fetcherThread)
-            fetcherThread.start
+            fetcherThread.start //启动刚刚创建的拉取线程
         }
 
+        //将分区添加给线程，即可以拉取信息
         fetcherThreadMap(brokerAndFetcherId).addPartitions(partitionAndOffsets.map { case (topicAndPartition, brokerAndInitOffset) =>
           topicAndPartition -> brokerAndInitOffset.initOffset
         })

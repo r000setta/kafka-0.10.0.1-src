@@ -38,6 +38,7 @@ import com.yammer.metrics.core.Gauge
 /**
  *  Abstract class for fetching data from multiple partitions from the same broker.
  */
+//抽象拉取线程，主要负责构建并拉取请求，处理结果
 abstract class AbstractFetcherThread(name: String,
                                      clientId: String,
                                      sourceBroker: BrokerEndPoint,
@@ -45,8 +46,8 @@ abstract class AbstractFetcherThread(name: String,
                                      isInterruptible: Boolean = true)
   extends ShutdownableThread(name, isInterruptible) {
 
-  type REQ <: FetchRequest
-  type PD <: PartitionData
+  type REQ <: FetchRequest  //拉取请求，包含分区偏移量
+  type PD <: PartitionData  //拉取结果，包含消息集
 
   private val partitionMap = new mutable.HashMap[TopicAndPartition, PartitionFetchState] // a (topic, partition) -> partitionFetchState map
   private val partitionMapLock = new ReentrantLock
@@ -83,15 +84,16 @@ abstract class AbstractFetcherThread(name: String,
     fetcherLagStats.unregister()
   }
 
+  //有分区后构建请求，拉取线程开始工作
   override def doWork() {
 
     val fetchRequest = inLock(partitionMapLock) {
       val fetchRequest = buildFetchRequest(partitionMap)
-      if (fetchRequest.isEmpty) {
+      if (fetchRequest.isEmpty) { //请求未构建成功，继续在信号量上等待
         trace("There are no active partitions. Back off for %d ms before sending a fetch request".format(fetchBackOffMs))
         partitionMapCond.await(fetchBackOffMs, TimeUnit.MILLISECONDS)
       }
-      fetchRequest
+      fetchRequest  //请求成功构建
     }
 
     if (!fetchRequest.isEmpty)
@@ -126,16 +128,19 @@ abstract class AbstractFetcherThread(name: String,
           val TopicAndPartition(topic, partitionId) = topicAndPartition
           partitionMap.get(topicAndPartition).foreach(currentPartitionFetchState =>
             // we append to the log if the current offset is defined and it is the same as the offset requested during fetch
+            //当前偏移量和收到的偏移量相同
             if (fetchRequest.offset(topicAndPartition) == currentPartitionFetchState.offset) {
               Errors.forCode(partitionData.errorCode) match {
                 case Errors.NONE =>
                   try {
                     val messages = partitionData.toByteBufferMessageSet
                     val validBytes = messages.validBytes
+                    //+1得到新偏移量，即下一次要拉取的位置
                     val newOffset = messages.shallowIterator.toSeq.lastOption match {
                       case Some(m: MessageAndOffset) => m.nextOffset
                       case None => currentPartitionFetchState.offset
                     }
+                    //更新partitionMap中分区拉取状态
                     partitionMap.put(topicAndPartition, new PartitionFetchState(newOffset))
                     fetcherLagStats.getAndMaybePut(topic, partitionId).lag = Math.max(0L, partitionData.highWatermark - newOffset)
                     fetcherStats.byteRate.mark(validBytes)
@@ -181,6 +186,7 @@ abstract class AbstractFetcherThread(name: String,
     }
   }
 
+  //为拉取线程添加分区，partitionMap变量保存了每个分区的拉取状态
   def addPartitions(partitionAndOffsets: Map[TopicAndPartition, Long]) {
     partitionMapLock.lockInterruptibly()
     try {
@@ -192,7 +198,7 @@ abstract class AbstractFetcherThread(name: String,
             if (PartitionTopicInfo.isOffsetInvalid(offset)) new PartitionFetchState(handleOffsetOutOfRange(topicAndPartition))
             else new PartitionFetchState(offset)
           )}
-      partitionMapCond.signalAll()
+      partitionMapCond.signalAll()  //有数据时唤醒线程
     } finally partitionMapLock.unlock()
   }
 

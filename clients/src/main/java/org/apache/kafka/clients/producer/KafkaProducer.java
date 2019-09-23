@@ -129,19 +129,19 @@ import org.slf4j.LoggerFactory;
 public class KafkaProducer<K, V> implements Producer<K, V> {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaProducer.class);
-    private static final AtomicInteger PRODUCER_CLIENT_ID_SEQUENCE = new AtomicInteger(1);
+    private static final AtomicInteger PRODUCER_CLIENT_ID_SEQUENCE = new AtomicInteger(1);  //clientID生成器
     private static final String JMX_PREFIX = "kafka.producer";
 
     private String clientId;
-    private final Partitioner partitioner;
-    private final int maxRequestSize;
+    private final Partitioner partitioner;  //分区选择器，将消息路由到指定分区
+    private final int maxRequestSize;   //消息的最大长度
     private final long totalMemorySize;
-    private final Metadata metadata;
-    private final RecordAccumulator accumulator;
-    private final Sender sender;
+    private final Metadata metadata;    //整个Kafka集群的元数据
+    private final RecordAccumulator accumulator;    //收集并缓存消息
+    private final Sender sender;    //发送消息的Sender任务，在ioThread线程中执行
     private final Metrics metrics;
-    private final Thread ioThread;
-    private final CompressionType compressionType;
+    private final Thread ioThread;  //执行Sender任务的线程，称为Sender线程
+    private final CompressionType compressionType;  //压缩算法
     private final Sensor errors;
     private final Time time;
     private final Serializer<K> keySerializer;
@@ -222,6 +222,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                     MetricsReporter.class);
             reporters.add(new JmxReporter(JMX_PREFIX));
             this.metrics = new Metrics(metricConfig, reporters, time);
+            //通过反射机制配置
             this.partitioner = config.getConfiguredInstance(ProducerConfig.PARTITIONER_CLASS_CONFIG, Partitioner.class);
             long retryBackoffMs = config.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG);
             this.metadata = new Metadata(retryBackoffMs, config.getLong(ProducerConfig.METADATA_MAX_AGE_CONFIG));
@@ -265,6 +266,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                 this.requestTimeoutMs = config.getInt(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG);
             }
 
+            //创建RecordAccumulator
             this.accumulator = new RecordAccumulator(config.getInt(ProducerConfig.BATCH_SIZE_CONFIG),
                     this.totalMemorySize,
                     this.compressionType,

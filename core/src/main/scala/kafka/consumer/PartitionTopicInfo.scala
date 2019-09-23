@@ -24,8 +24,8 @@ import kafka.utils.Logging
 
 class PartitionTopicInfo(val topic: String,
                          val partitionId: Int,
-                         private val chunkQueue: BlockingQueue[FetchedDataChunk],
-                         private val consumedOffset: AtomicLong,
+                         private val chunkQueue: BlockingQueue[FetchedDataChunk], //队列，消息存储的介质
+                         private val consumedOffset: AtomicLong,  //偏移量，作为拉取的状态
                          private val fetchedOffset: AtomicLong,
                          private val fetchSize: AtomicInteger,
                          private val clientId: String) extends Logging {

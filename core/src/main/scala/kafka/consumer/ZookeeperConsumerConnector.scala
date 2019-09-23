@@ -79,6 +79,16 @@ import scala.collection.JavaConversions._
  * Each consumer tracks the offset of the latest message consumed for each partition.
  *
  */
+
+/**
+  * 一些字段的解释
+  * topicCountMap:设置主题即对应的线程个数，每个线程对应一个队列和一个消息流
+  * consumerId:消费者编号
+  * consumerThreadId:消费者线程编号
+  * consumerThreadIdsPerTopicMap:每个主题和消费者线程编号集合的映射关系
+  * topicThreadIds:表示所有的消费者线程编号集合，相同主题的线程会在同一个数组内
+  * topicThreadIdAndQueues:表示消费者线程和队列的映射，每个线程对应一个队列
+  */
 private[kafka] object ZookeeperConsumerConnector {
   val shutdownCommand: FetchedDataChunk = new FetchedDataChunk(null, null, -1L)
 }
@@ -163,6 +173,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     if (messageStreamCreated.getAndSet(true))
       throw new MessageStreamsExistException(this.getClass.getSimpleName +
                                    " can create message streams at most once",null)
+    //并不消费数据，只是为消费消息做准备
     consume(topicCountMap, keyDecoder, valueDecoder)
   }
 
@@ -260,10 +271,10 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     ).flatten.toList
 
     val dirs = new ZKGroupDirs(config.groupId)
-    registerConsumerInZK(dirs, consumerIdString, topicCount)
-    reinitializeConsumer(topicCount, queuesAndStreams)
+    registerConsumerInZK(dirs, consumerIdString, topicCount)  //注册消费者节点
+    reinitializeConsumer(topicCount, queuesAndStreams)  //重新初始化消费者
 
-    loadBalancerListener.kafkaMessageAndMetadataStreams.asInstanceOf[Map[String, List[KafkaStream[K,V]]]]
+    loadBalancerListener.kafkaMessageAndMetadataStreams.asInstanceOf[Map[String, List[KafkaStream[K,V]]]] //返回KafkaStream
   }
 
   // this API is used by unit tests only
@@ -702,13 +713,17 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
           )
         }
         releasePartitionOwnership(topicRegistry)
+        //分配上下文
         val assignmentContext = new AssignmentContext(group, consumerIdString, config.excludeInternalTopics, zkUtils)
+        //全局上下文
         val globalPartitionAssignment = partitionAssignor.assign(assignmentContext)
+        //属于当前消费者的分配上下文
         val partitionAssignment = globalPartitionAssignment.get(assignmentContext.consumerId)
         val currentTopicRegistry = new Pool[String, Pool[Int, PartitionTopicInfo]](
           valueFactory = Some((topic: String) => new Pool[Int, PartitionTopicInfo]))
 
         // fetch current offsets for all topic-partitions
+        //分配给当前消费者的所有分区
         val topicPartitions = partitionAssignment.keySet.toSeq
 
         val offsetFetchResponseOpt = fetchOffsets(topicPartitions)
@@ -716,6 +731,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
         if (isShuttingDown.get || !offsetFetchResponseOpt.isDefined)
           false
         else {
+          //获取所有分区的当前偏移量
           val offsetFetchResponse = offsetFetchResponseOpt.get
           topicPartitions.foreach(topicAndPartition => {
             val (topic, partition) = topicAndPartition.asTuple
@@ -780,8 +796,8 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
       val allPartitionInfos = topicRegistry.values.map(p => p.values).flatten
       fetcher match {
         case Some(f) =>
-          f.stopConnections
-          clearFetcherQueues(allPartitionInfos, cluster, queuesToBeCleared, messageStreams)
+          f.stopConnections //关闭线程拉取器，同时关闭所有拉取线程
+          clearFetcherQueues(allPartitionInfos, cluster, queuesToBeCleared, messageStreams) //清空队列和消息流
           /**
           * here, we need to commit offsets before stopping the consumer from returning any more messages
           * from the current data chunk. Since partition ownership is not yet released, this commit offsets
@@ -792,7 +808,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
           **/
         if (config.autoCommitEnable) {
           info("Committing all offsets after clearing the fetcher queues")
-          commitOffsets(true)
+          commitOffsets(true) //提交偏移量
         }
         case None =>
       }
@@ -822,6 +838,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
       closeFetchersForQueues(cluster, messageStreams, queuesTobeCleared)
     }
 
+    //再平衡后，消费者分配到分区，通过拉取管理器启动线程
     private def updateFetcher(cluster: Cluster) {
       // update partitions for fetcher
       var allPartitionInfos : List[PartitionTopicInfo] = Nil
@@ -868,14 +885,16 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
       else true
     }
 
+    //将分配给消费者的分区封装为PartitionTopicInfo对象，便于拉取线程的处理
     private def addPartitionTopicInfo(currentTopicRegistry: Pool[String, Pool[Int, PartitionTopicInfo]],
                                       partition: Int, topic: String,
                                       offset: Long, consumerThreadId: ConsumerThreadId) {
       val partTopicInfoMap = currentTopicRegistry.getAndMaybePut(topic)
-
+      //每个线程对应一个队列
       val queue = topicThreadIdAndQueues.get((topic, consumerThreadId))
       val consumedOffset = new AtomicLong(offset)
       val fetchedOffset = new AtomicLong(offset)
+      //创建PartitionTopicInfo
       val partTopicInfo = new PartitionTopicInfo(topic,
                                                  partition,
                                                  queue,

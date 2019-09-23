@@ -26,6 +26,7 @@ import scala.collection.JavaConverters
 import JavaConverters._
 import ConsumerFetcherThread._
 
+//消费者拉取线程
 class ConsumerFetcherThread(name: String,
                             val config: ConsumerConfig,
                             sourceBroker: BrokerEndPoint,
@@ -49,9 +50,9 @@ class ConsumerFetcherThread(name: String,
   private val fetchRequestBuilder = new FetchRequestBuilder().
     clientId(clientId).
     replicaId(Request.OrdinaryConsumerId).
-    maxWait(config.fetchWaitMaxMs).
-    minBytes(config.fetchMinBytes).
-    requestVersion(kafka.api.FetchRequest.CurrentVersion)
+    maxWait(config.fetchWaitMaxMs). //拉取最长等待时间
+    minBytes(config.fetchMinBytes). //拉取请求的最少字节大小
+    requestVersion(kafka.api.FetchRequest.CurrentVersion) //拉取请求
 
   override def initiateShutdown(): Boolean = {
     val justShutdown = super.initiateShutdown()

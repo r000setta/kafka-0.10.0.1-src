@@ -39,6 +39,7 @@ public interface Producer<K, V> extends Closeable {
      * 
      * @param record The record to send
      * @return A future which will eventually contain the response information
+     * 发送消息，实际是将消息放入RecordAccumulator缓存
      */
     public Future<RecordMetadata> send(ProducerRecord<K, V> record);
 
@@ -49,17 +50,23 @@ public interface Producer<K, V> extends Closeable {
     
     /**
      * Flush any accumulated records from the producer. Blocks until all sends are complete.
+     * 等待缓存中所有数据发送完成，阻塞调用的线程
      */
     public void flush();
 
     /**
      * Get a list of partitions for the given topic for custom partition assignment. The partition metadata will change
      * over time so this list should not be cached.
+     *
+     * KafkaProducer维护了一个Metadata对象用于存储Kafka集群元数据，元数据定期更新
+     * 该方法用于获取元数据中指定Topic中的分区信息
      */
     public List<PartitionInfo> partitionsFor(String topic);
 
     /**
      * Return a map of metrics maintained by the producer
+     *
+     * 记录统计信息
      */
     public Map<MetricName, ? extends Metric> metrics();
 

@@ -41,18 +41,20 @@ object PartitionAssignor {
   }
 }
 
+//在平衡時构造当前消费者的分区分配上下文信息，用于分配算法
 class AssignmentContext(group: String, val consumerId: String, excludeInternalTopics: Boolean, zkUtils: ZkUtils) {
   val myTopicThreadIds: collection.Map[String, collection.Set[ConsumerThreadId]] = {
     val myTopicCount = TopicCount.constructTopicCount(group, consumerId, zkUtils, excludeInternalTopics)
     myTopicCount.getConsumerThreadIdsPerTopic
   }
 
+  //根据订阅的主题得到可用的主题
   val partitionsForTopic: collection.Map[String, Seq[Int]] =
     zkUtils.getPartitionsForTopics(myTopicThreadIds.keySet.toSeq)
-
+  //订阅指定主题的消费者线程
   val consumersForTopic: collection.Map[String, List[ConsumerThreadId]] =
     zkUtils.getConsumersPerTopic(group, excludeInternalTopics)
-
+  //消费组的消费者成员列表
   val consumers: Seq[String] = zkUtils.getConsumersInGroup(group).sorted
 }
 
@@ -70,6 +72,7 @@ class AssignmentContext(group: String, val consumerId: String, excludeInternalTo
 
 class RoundRobinAssignor() extends PartitionAssignor with Logging {
 
+  //分配算法，根据AssignmentContext进行分配,针对消费组的所有消费者，返回所有消费者的分区分配结果
   def assign(ctx: AssignmentContext) = {
 
     val valueFactory = (topic: String) => new mutable.HashMap[TopicAndPartition, ConsumerThreadId]

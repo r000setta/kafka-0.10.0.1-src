@@ -37,13 +37,16 @@ import java.util.concurrent.atomic.AtomicInteger
  *  Once ConsumerFetcherManager is created, startConnections() and stopAllConnections() can be called repeatedly
  *  until shutdown() is called.
  */
+//消费者拉取线程管理器
 class ConsumerFetcherManager(private val consumerIdString: String,
                              private val config: ConsumerConfig,
                              private val zkUtils : ZkUtils)
         extends AbstractFetcherManager("ConsumerFetcherManager-%d".format(SystemTime.milliseconds),
                                        config.clientId, config.numConsumerFetchers) {
+  //被消费者拉取管理器管理的分区集合
   private var partitionMap: immutable.Map[TopicAndPartition, PartitionTopicInfo] = null
   private var cluster: Cluster = null
+  //候选集合，即暂时找不到主副本的分区
   private val noLeaderPartitionSet = new mutable.HashSet[TopicAndPartition]
   private val lock = new ReentrantLock
   private val cond = lock.newCondition()
@@ -56,12 +59,13 @@ class ConsumerFetcherManager(private val consumerIdString: String,
       val leaderForPartitionsMap = new HashMap[TopicAndPartition, BrokerEndPoint]
       lock.lock()
       try {
-        while (noLeaderPartitionSet.isEmpty) {
+        while (noLeaderPartitionSet.isEmpty) {  //没有数据，等待
           trace("No partition for leader election.")
           cond.await()
         }
 
         trace("Partitions without leader %s".format(noLeaderPartitionSet))
+        //向任意一个消息代理节点获取元数据，其中包含了分区的主副本
         val brokers = zkUtils.getAllBrokerEndPointsForChannel(SecurityProtocol.PLAINTEXT)
         val topicsMetadata = ClientUtils.fetchTopicMetadata(noLeaderPartitionSet.map(m => m.topic).toSet,
                                                             brokers,
@@ -69,13 +73,14 @@ class ConsumerFetcherManager(private val consumerIdString: String,
                                                             config.socketTimeoutMs,
                                                             correlationId.getAndIncrement).topicsMetadata
         if(logger.isDebugEnabled) topicsMetadata.foreach(topicMetadata => debug(topicMetadata.toString()))
-        topicsMetadata.foreach { tmd =>
+        topicsMetadata.foreach { tmd => //主题元数据
           val topic = tmd.topic
-          tmd.partitionsMetadata.foreach { pmd =>
+          tmd.partitionsMetadata.foreach { pmd => //分区元数据
             val topicAndPartition = TopicAndPartition(topic, pmd.partitionId)
+            //将候选集中存在主副本的分区加入结果集，并从候选集中删除
             if(pmd.leader.isDefined && noLeaderPartitionSet.contains(topicAndPartition)) {
               val leaderBroker = pmd.leader.get
-              leaderForPartitionsMap.put(topicAndPartition, leaderBroker)
+              leaderForPartitionsMap.put(topicAndPartition, leaderBroker) //分区被选中
               noLeaderPartitionSet -= topicAndPartition
             }
           }
@@ -92,6 +97,7 @@ class ConsumerFetcherManager(private val consumerIdString: String,
       }
 
       try {
+        //将分区加入拉取线程，BrokerAndInitialOffset指定拉取线程从何处开始拉取
         addFetcherForPartitions(leaderForPartitionsMap.map{
           case (topicAndPartition, broker) =>
             topicAndPartition -> BrokerAndInitialOffset(broker, partitionMap(topicAndPartition).getFetchOffset())}
@@ -114,6 +120,7 @@ class ConsumerFetcherManager(private val consumerIdString: String,
     }
   }
 
+  //创建拉取线程
   override def createFetcherThread(fetcherId: Int, sourceBroker: BrokerEndPoint): AbstractFetcherThread = {
     new ConsumerFetcherThread(
       "ConsumerFetcherThread-%s-%d-%d".format(consumerIdString, fetcherId, sourceBroker.id),

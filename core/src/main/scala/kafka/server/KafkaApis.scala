@@ -67,6 +67,7 @@ class KafkaApis(val requestChannel: RequestChannel,
 
   /**
    * Top-level method that handles all requests and multiplexes to the right api
+    *
    */
   def handle(request: RequestChannel.Request) {
     try {
@@ -322,6 +323,7 @@ class KafkaApis(val requestChannel: RequestChannel,
 
   /**
    * Handle a produce request
+    * KafkaApis处理生产请求，完成后创建相应并放入请求通道
    */
   def handleProducerRequest(request: RequestChannel.Request) {
     val produceRequest = request.body.asInstanceOf[ProduceRequest]

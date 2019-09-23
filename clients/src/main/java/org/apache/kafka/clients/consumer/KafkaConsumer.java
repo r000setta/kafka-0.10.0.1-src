@@ -796,6 +796,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         acquire();
         try {
             if (topics.isEmpty()) {
+                //主题为空，取消订阅
                 // treat subscribing to empty topic list as the same as unsubscribing
                 this.unsubscribe();
             } else {
@@ -895,7 +896,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             Set<String> topics = new HashSet<>();
             for (TopicPartition tp : partitions)
                 topics.add(tp.topic());
-            metadata.setTopics(topics);
+            metadata.setTopics(topics); //为元数据设置最新的主题
         } finally {
             release();
         }

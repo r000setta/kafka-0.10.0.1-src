@@ -69,10 +69,11 @@ public class SubscriptionState {
     private final Set<String> subscription;
 
     /* the list of topics the group has subscribed to (set only for the leader on join group completion) */
+    //消费着组订阅的主题
     private final Set<String> groupSubscription;
 
     /* the list of partitions the user has requested */
-    //如果使用USER_ASSIGNED,则记录分配给当前消费者的TopicPartition集合
+    //如果使用USER_ASSIGNED,则记录分配给当前消费者的TopicPartition集合，即用户分配的分区
     private final Set<TopicPartition> userAssignment;
 
     /* the list of partitions currently assigned */
@@ -403,6 +404,7 @@ public class SubscriptionState {
             this.resetStrategy = null;
         }
 
+        //重置拉取偏移量，第一次分配是调用
         private void awaitReset(OffsetResetStrategy strategy) {
             this.resetStrategy = strategy;
             this.position = null;
@@ -421,12 +423,14 @@ public class SubscriptionState {
             this.resetStrategy = null;
         }
 
+        //更新拉取偏移量
         private void position(long offset) {
             if (!hasValidPosition())
                 throw new IllegalStateException("Cannot set a new position without a valid current position");
             this.position = offset;
         }
 
+        //更新提交偏移量，定时提交任务时调用
         private void committed(OffsetAndMetadata offset) {
             this.committed = offset;
         }

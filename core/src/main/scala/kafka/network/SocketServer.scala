@@ -479,6 +479,7 @@ private[kafka] class Processor(val id: Int,
     }
   }
 
+  //处理器读取客户端发送的NetworkReceive，创建请求并放入请求通道
   private def processCompletedReceives() {
     selector.completedReceives.asScala.foreach { receive =>
       try {
@@ -486,7 +487,7 @@ private[kafka] class Processor(val id: Int,
         val session = RequestChannel.Session(new KafkaPrincipal(KafkaPrincipal.USER_TYPE, channel.principal.getName),
           channel.socketAddress)
         val req = RequestChannel.Request(processor = id, connectionId = receive.source, session = session, buffer = receive.payload, startTimeMs = time.milliseconds, securityProtocol = protocol)
-        requestChannel.sendRequest(req)
+        requestChannel.sendRequest(req) //将请求放入请求通道
         selector.mute(receive.source)
       } catch {
         case e @ (_: InvalidRequestException | _: SchemaException) =>
