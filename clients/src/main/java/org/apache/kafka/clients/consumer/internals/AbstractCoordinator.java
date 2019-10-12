@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * 抽象的客户端协调者父类，定义了为客户端分配分区的逻辑
  * AbstractCoordinator implements group management for a single group member by interacting with
  * a designated Kafka broker (the coordinator). Group semantics are provided by extending this class.
  * See {@link ConsumerCoordinator} for example usage.
@@ -91,8 +92,8 @@ public abstract class AbstractCoordinator implements Closeable {
     protected final Time time;
     protected final long retryBackoffMs;
 
-    private boolean needsJoinPrepare = true;
-    private boolean rejoinNeeded = true;
+    private boolean needsJoinPrepare = true;    //准备加入消费组
+    private boolean rejoinNeeded = true;    //是否需要重新加入
     protected Node coordinator;
     protected String memberId;
     protected String protocol;
@@ -205,15 +206,15 @@ public abstract class AbstractCoordinator implements Closeable {
      * Ensure that the group is active (i.e. joined and synced)
      */
     public void ensureActiveGroup() {
-        if (!needRejoin())
+        if (!needRejoin())  //不需要重新加入
             return;
 
-        if (needsJoinPrepare) {
-            onJoinPrepare(generation, memberId);
+        if (needsJoinPrepare) { //初始为true,进入一次后为false
+            onJoinPrepare(generation, memberId);    //准备加入
             needsJoinPrepare = false;
         }
 
-        while (needRejoin()) {
+        while (needRejoin()) {  //需要加入
             ensureCoordinatorReady();
 
             // ensure that there are no pending requests to the coordinator. This is important
@@ -223,14 +224,14 @@ public abstract class AbstractCoordinator implements Closeable {
                 continue;
             }
 
-            RequestFuture<ByteBuffer> future = sendJoinGroupRequest();
+            RequestFuture<ByteBuffer> future = sendJoinGroupRequest();  //发送请求
             future.addListener(new RequestFutureListener<ByteBuffer>() {
                 @Override
                 public void onSuccess(ByteBuffer value) {
                     // handle join completion in the callback so that the callback will be invoked
                     // even if the consumer is woken up before finishing the rebalance
                     onJoinComplete(generation, memberId, protocol, value);
-                    needsJoinPrepare = true;
+                    needsJoinPrepare = true;    //重置
                     heartbeatTask.reset();
                 }
 

@@ -136,6 +136,7 @@ object ClientUtils extends Logging{
 
    /**
     * Creates a blocking channel to the offset manager of the given group
+     * 建立到偏移量管理器即协调节点的链接
     */
    def channelToOffsetManager(group: String, zkUtils: ZkUtils, socketTimeoutMs: Int = 3000, retryBackOffMs: Int = 1000) = {
      var queryChannel = channelToAnyBroker(zkUtils)

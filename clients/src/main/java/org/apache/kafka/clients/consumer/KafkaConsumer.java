@@ -996,7 +996,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         if (!records.isEmpty())
             return records;
 
-        fetcher.sendFetches();
+        fetcher.sendFetches();  //发送拉取请求
         client.poll(timeout, now);
         return fetcher.fetchedRecords();
     }

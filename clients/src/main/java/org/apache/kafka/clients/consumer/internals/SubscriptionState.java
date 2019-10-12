@@ -77,7 +77,8 @@ public class SubscriptionState {
     private final Set<TopicPartition> userAssignment;
 
     /* the list of partitions currently assigned */
-    //记录每个TopicPartition的消费状态
+    //分配结果,记录每个TopicPartition的消费状态
+    //subscribe和assign都用assignment存储当前分配的分区及状态
     private final Map<TopicPartition, TopicPartitionState> assignment;
 
     /* do we need to request a partition assignment from the coordinator? */
@@ -257,6 +258,7 @@ public class SubscriptionState {
         return this.groupSubscription;
     }
 
+    //获取指定分区的状态对象
     private TopicPartitionState assignedState(TopicPartition tp) {
         TopicPartitionState state = this.assignment.get(tp);
         if (state == null)
@@ -264,6 +266,7 @@ public class SubscriptionState {
         return state;
     }
 
+    //更新分区消费偏移量
     public void committed(TopicPartition tp, OffsetAndMetadata offset) {
         assignedState(tp).committed(offset);
     }
@@ -390,12 +393,12 @@ public class SubscriptionState {
         return listener;
     }
 
-    //表示TopicPartition消费状态
+    //分区状态
     private static class TopicPartitionState {
-        private Long position; // last consumed position
-        private OffsetAndMetadata committed;  // last committed position
+        private Long position; // last consumed position，拉取偏移量
+        private OffsetAndMetadata committed;  // last committed postion，消费偏移量
         private boolean paused;  // whether this partition has been paused by the user
-        private OffsetResetStrategy resetStrategy;  // the strategy to use if the offset needs resetting
+        private OffsetResetStrategy resetStrategy;  // the strategy to use if the offset needs resetting,重置策略
 
         public TopicPartitionState() {
             this.paused = false;
@@ -418,6 +421,7 @@ public class SubscriptionState {
             return position != null;
         }
 
+        //开始重置
         private void seek(long offset) {
             this.position = offset;
             this.resetStrategy = null;

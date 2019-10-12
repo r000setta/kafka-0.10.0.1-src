@@ -72,6 +72,7 @@ class ConsumerFetcherThread(name: String,
     if (pti.getFetchOffset != fetchOffset)
       throw new RuntimeException("Offset doesn't match for partition [%s,%d] pti offset: %d fetch offset: %d"
                                 .format(topicAndPartition.topic, topicAndPartition.partition, pti.getFetchOffset, fetchOffset))
+    //将消息放入队列
     pti.enqueue(partitionData.underlying.messages.asInstanceOf[ByteBufferMessageSet])
   }
 
@@ -102,7 +103,7 @@ class ConsumerFetcherThread(name: String,
           fetchSize)
     }
 
-    new FetchRequest(fetchRequestBuilder.build())
+    new FetchRequest(fetchRequestBuilder.build()) //构造器模式，最后构造请求
   }
 
   protected def fetch(fetchRequest: FetchRequest): collection.Map[TopicAndPartition, PartitionData] =

@@ -25,8 +25,8 @@ import kafka.utils.Logging
 class PartitionTopicInfo(val topic: String,
                          val partitionId: Int,
                          private val chunkQueue: BlockingQueue[FetchedDataChunk], //队列，消息存储的介质
-                         private val consumedOffset: AtomicLong,  //偏移量，作为拉取的状态
-                         private val fetchedOffset: AtomicLong,
+                         private val consumedOffset: AtomicLong,  //消费状态
+                         private val fetchedOffset: AtomicLong, //拉取状态
                          private val fetchSize: AtomicInteger,
                          private val clientId: String) extends Logging {
 
@@ -57,6 +57,7 @@ class PartitionTopicInfo(val topic: String,
     if(size > 0) {
       val next = messages.shallowIterator.toSeq.last.nextOffset
       trace("Updating fetch offset = " + fetchedOffset.get + " to " + next)
+      //将消息集包装成数据块放入队列，并更新fetchedOffset
       chunkQueue.put(new FetchedDataChunk(messages, this, fetchedOffset.get))
       fetchedOffset.set(next)
       debug("updated fetch offset of (%s) to %d".format(this, next))

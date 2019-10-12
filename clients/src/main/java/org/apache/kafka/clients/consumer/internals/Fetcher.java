@@ -156,6 +156,7 @@ public class Fetcher<K, V> {
 
     /**
      * Update the fetch positions for the provided partitions.
+     * 更新分区状态的拉取偏移量
      * @param partitions the partitions to update positions for
      * @throws NoOffsetForPartitionException If no offset is stored for a given partition and no reset policy is available
      */
@@ -172,10 +173,10 @@ public class Fetcher<K, V> {
                 // there's no committed position, so we need to reset with the default strategy
                 subscriptions.needOffsetReset(tp);
                 resetOffset(tp);
-            } else {
+            } else {    //分区状态中已提交的偏移量不为空，直接用它作为拉取偏移量
                 long committed = subscriptions.committed(tp).offset();
                 log.debug("Resetting offset for partition {} to the committed offset {}", tp, committed);
-                subscriptions.seek(tp, committed);
+                subscriptions.seek(tp, committed);  //用已提交偏移量作为拉取偏移量
             }
         }
     }
@@ -304,7 +305,7 @@ public class Fetcher<K, V> {
 
     /**
      * Fetch a single offset before the given timestamp for the partition.
-     *
+     * 客户端通过拉取器，发送列举偏移量请求给分区主副本节点
      * @param partition The partition that needs fetching offset.
      * @param timestamp The timestamp for fetching offset.
      * @return The offset of the message that is published before the given timestamp

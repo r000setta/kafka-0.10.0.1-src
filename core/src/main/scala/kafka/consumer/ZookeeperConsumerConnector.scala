@@ -330,6 +330,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
    */
   def commitOffsets { commitOffsets(true) }
 
+  //定时提交偏移量
   def commitOffsets(isAutoCommit: Boolean) {
 
     val offsetsToCommit =
@@ -343,6 +344,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
 
   }
 
+  //消费者提交分区的偏移量
   def commitOffsets(offsetsToCommit: immutable.Map[TopicAndPartition, OffsetAndMetadata], isAutoCommit: Boolean) {
     trace("OffsetMap: %s".format(offsetsToCommit))
     var retriesRemaining = 1 + (if (isAutoCommit) 0 else config.offsetsCommitMaxRetries) // no retries for commits from auto-commit
@@ -358,10 +360,10 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
             true
           } else {
             val offsetCommitRequest = OffsetCommitRequest(config.groupId, offsetsToCommit, clientId = config.clientId)
-            ensureOffsetManagerConnected()
+            ensureOffsetManagerConnected()  //确保连接到偏移量管理器
             try {
               kafkaCommitMeter.mark(offsetsToCommit.size)
-              offsetsChannel.send(offsetCommitRequest)
+              offsetsChannel.send(offsetCommitRequest)  //发送提交请求
               val offsetCommitResponse = OffsetCommitResponse.readFrom(offsetsChannel.receive().payload())
               trace("Offset commit response: %s.".format(offsetCommitResponse))
 
@@ -434,6 +436,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     }
   }
 
+  //消费者获取分区的偏移量
   private def fetchOffsets(partitions: Seq[TopicAndPartition]) = {
     if (partitions.isEmpty)
       Some(OffsetFetchResponse(Map.empty))

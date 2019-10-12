@@ -31,6 +31,7 @@ import org.apache.kafka.common.utils.Utils._
 /**
  * A consumer of kafka messages
  */
+//简单的消费者的实现，采用阻塞通道发送请求
 @threadsafe
 class SimpleConsumer(val host: String,
                      val port: Int,

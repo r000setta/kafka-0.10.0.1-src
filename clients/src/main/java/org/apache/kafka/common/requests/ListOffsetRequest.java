@@ -30,6 +30,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * “列举偏移量”请求对象
+ */
 public class ListOffsetRequest extends AbstractRequest {
 
     public static final long EARLIEST_TIMESTAMP = -2L;

@@ -28,6 +28,7 @@ import java.util.Map;
 
 /**
  * This wrapper supports both v0 and v1 of OffsetFetchRequest.
+ * “获取偏移量"请求对象
  */
 public class OffsetFetchRequest extends AbstractRequest {
     

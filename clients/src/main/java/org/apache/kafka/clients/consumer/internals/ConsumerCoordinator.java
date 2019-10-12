@@ -313,14 +313,18 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
 
     /**
      * Refresh the committed offsets for provided partitions.
+     * 更新消费偏移量：消费者接收到"获取偏移量“的请求结果后，会通过订阅状态的committed()
+     * 更新分区状态的"已提交偏移量“
      */
     public void refreshCommittedOffsetsIfNeeded() {
         if (subscriptions.refreshCommitsNeeded()) {
+            //发送OFFSET_FETCH给协调者，获取分区已提交的偏移量
             Map<TopicPartition, OffsetAndMetadata> offsets = fetchCommittedOffsets(subscriptions.assignedPartitions());
             for (Map.Entry<TopicPartition, OffsetAndMetadata> entry : offsets.entrySet()) {
                 TopicPartition tp = entry.getKey();
                 // verify assignment is still active
                 if (subscriptions.isAssigned(tp))
+                    //更新分区消费偏移量
                     this.subscriptions.committed(tp, entry.getValue());
             }
             this.subscriptions.commitsRefreshed();
@@ -328,6 +332,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
     }
 
     /**
+     * 客户端通过ConsumerCoordinator，发送“获取偏移量”请求给协调节点
      * Fetch the current committed offsets from the coordinator for a set of partitions.
      * @param partitions The partitions to fetch offsets for
      * @return A map from partition to the committed offset

@@ -29,6 +29,7 @@ import kafka.common.{KafkaException, MessageSizeTooLargeException}
  * An iterator that blocks until a value can be read from the supplied queue.
  * The iterator takes a shutdownCommand object which can be added to the queue to trigger a shutdown
  *
+  * 消费者迭代器
  */
 class ConsumerIterator[K, V](private val channel: BlockingQueue[FetchedDataChunk],
                              consumerTimeoutMs: Int,
@@ -46,12 +47,12 @@ class ConsumerIterator[K, V](private val channel: BlockingQueue[FetchedDataChunk
     val item = super.next()
     if(consumedOffset < 0)
       throw new KafkaException("Offset returned by the message set is invalid %d".format(consumedOffset))
-    currentTopicInfo.resetConsumeOffset(consumedOffset)
+    currentTopicInfo.resetConsumeOffset(consumedOffset) //更新消费进度
     val topic = currentTopicInfo.topic
     trace("Setting %s consumed offset to %d".format(topic, consumedOffset))
     consumerTopicStats.getConsumerTopicStats(topic).messageRate.mark()
     consumerTopicStats.getConsumerAllTopicStats().messageRate.mark()
-    item
+    item  //返回最新的一条消息
   }
 
   protected def makeNext(): MessageAndMetadata[K, V] = {

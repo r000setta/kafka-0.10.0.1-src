@@ -376,6 +376,7 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
+  //处理消费者客户端发送的提交偏移量请求
   def handleCommitOffsets(groupId: String,
                           memberId: String,
                           generationId: Int,
